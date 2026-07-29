@@ -279,6 +279,54 @@
 
   .section-title{font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-secondary); margin:4px 0 -4px 4px;}
 
+  /* --- segmented toggle (Chiffrer : Texte / Fichiers) --- */
+  .segmented{display:flex; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:50px; padding:4px; gap:4px;}
+  .segmented-btn{
+    flex:1; background:transparent; border:none; color:var(--text-secondary);
+    padding:10px 16px; border-radius:50px; font-family:var(--font-body); font-size:0.85rem; font-weight:600;
+    cursor:pointer; transition:background-color .2s ease, color .2s ease;
+  }
+  .segmented-btn.active{background:var(--btn-primary-bg); color:var(--btn-primary-text);}
+  .encrypt-mode{display:flex; flex-direction:column; gap:14px;}
+
+  /* --- zone de dépôt de fichiers --- */
+  .dropzone{
+    border:2px dashed rgba(255,255,255,0.25); border-radius:16px; padding:16px;
+    cursor:pointer; transition:border-color .2s ease, background-color .2s ease;
+  }
+  .dropzone.dragover{border-color:rgba(255,255,255,0.6); background:rgba(255,255,255,0.05);}
+  .dropzone-placeholder{
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+    padding:22px 10px; color:var(--text-secondary); text-align:center; font-size:0.85rem; line-height:1.5;
+  }
+  .dropzone-placeholder svg{width:28px; height:28px;}
+  .file-tiles{display:grid; grid-template-columns:repeat(3, 1fr); gap:10px;}
+  .file-tiles:empty{display:none;}
+  .file-tile{
+    position:relative; aspect-ratio:1; background:rgba(255,255,255,0.07); border-radius:12px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:8px 6px; gap:6px; overflow:hidden;
+  }
+  .file-tile-thumb{width:32px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--text-secondary); flex-shrink:0;}
+  .file-tile-thumb img{width:100%; height:100%; object-fit:cover; border-radius:8px;}
+  .file-tile-name{
+    font-size:0.62rem; color:var(--text-secondary); text-align:center; width:100%;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .file-tile-remove{
+    position:absolute; top:4px; right:4px; width:18px; height:18px; border-radius:50%;
+    background:rgba(0,0,0,0.55); color:#fff; border:none; font-size:12px; line-height:1;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;
+  }
+  .file-tile-add{background:transparent; border:2px dashed rgba(255,255,255,0.25); color:var(--text-secondary); cursor:pointer;}
+  .file-tile-add svg{width:20px; height:20px;}
+
+  /* --- résultat(s) de chiffrement de fichiers --- */
+  .encrypted-files-wrap{display:flex; flex-direction:column; gap:12px;}
+  .encrypted-file-row{display:flex; align-items:center; gap:10px;}
+  .encrypted-file-row svg{width:22px; height:22px; color:var(--text-primary); flex-shrink:0;}
+  .encrypted-file-name{word-break:break-all; margin:0;}
+
   @media (min-width:640px){
     main.content{max-width:480px;}
   }
@@ -390,38 +438,48 @@
             <select class="input" id="encrypt-contact"></select>
           </div>
         </div>
-        <div class="card">
-          <div class="field">
-            <label for="encrypt-text">Message</label>
-            <textarea class="input" id="encrypt-text" placeholder="Tapez votre message…"></textarea>
-          </div>
-          <div class="btn-row" style="margin-top:12px;">
-            <button class="btn btn-primary btn-block" id="btn-encrypt-text">Chiffrer</button>
-          </div>
-          <div id="encrypt-output-wrap" class="hidden" style="margin-top:14px;">
-            <div class="output-block" id="encrypt-output"></div>
+        <div class="segmented" role="tablist">
+          <button type="button" class="segmented-btn active" id="seg-text" data-mode="text" role="tab" aria-selected="true">Texte</button>
+          <button type="button" class="segmented-btn" id="seg-files" data-mode="files" role="tab" aria-selected="false">Fichiers</button>
+        </div>
+
+        <div id="encrypt-mode-text" class="encrypt-mode">
+          <div class="card">
+            <div class="field">
+              <label for="encrypt-text">Message</label>
+              <textarea class="input" id="encrypt-text" placeholder="Tapez votre message…"></textarea>
+            </div>
             <div class="btn-row" style="margin-top:12px;">
-              <button class="btn btn-sm" id="btn-copy-encrypted">Copier</button>
-              <button class="btn btn-sm" id="btn-share-encrypted">Partager</button>
+              <button class="btn btn-primary btn-block" id="btn-encrypt-text">Chiffrer</button>
+            </div>
+            <div id="encrypt-output-wrap" class="hidden" style="margin-top:14px;">
+              <div class="output-block" id="encrypt-output"></div>
+              <div class="btn-row" style="margin-top:12px;">
+                <button class="btn btn-sm" id="btn-copy-encrypted">Copier</button>
+                <button class="btn btn-sm" id="btn-share-encrypted">Partager</button>
+              </div>
             </div>
           </div>
         </div>
-        <div class="card">
-          <div class="settings-row" style="border-bottom:none; padding-bottom:0;">
-            <div>
-              <div class="lbl">Chiffrer un fichier</div>
-              <div class="desc">Le fichier .privalayer chiffré reste local tant que vous ne l'envoyez pas</div>
+
+        <div id="encrypt-mode-files" class="encrypt-mode hidden">
+          <div class="card">
+            <div class="section-title" style="margin-top:0;">Fichiers à chiffrer</div>
+            <div class="dropzone" id="file-dropzone" tabindex="0" role="button" aria-label="Ajouter des fichiers" style="margin-top:12px;">
+              <div id="file-dropzone-placeholder" class="dropzone-placeholder">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"></path><path d="M7 9l5-5 5 5"></path><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"></path></svg>
+                <span>Glissez vos fichiers ici ou appuyez pour sélectionner</span>
+              </div>
+              <div id="file-tiles" class="file-tiles"></div>
             </div>
-            <button class="btn btn-sm" id="btn-encrypt-file">Choisir</button>
+            <input type="file" id="input-encrypt-files" class="hidden" multiple>
           </div>
-          <input type="file" id="input-encrypt-file" class="hidden">
-          <div id="encrypted-file-wrap" class="hidden" style="margin-top:14px;">
-            <div class="hint" id="encrypted-file-name" style="margin-bottom:12px;"></div>
-            <div class="btn-row">
-              <button class="btn btn-primary btn-block" id="btn-send-file">Envoyer</button>
-              <button class="btn btn-block" id="btn-save-file">Enregistrer</button>
-            </div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary btn-block" id="btn-encrypt-files">Chiffrer</button>
           </div>
+
+          <div id="encrypted-files-wrap" class="encrypted-files-wrap hidden"></div>
         </div>
       </div>
     </section>
@@ -444,11 +502,11 @@
         <div class="settings-row" style="border-bottom:none; padding-bottom:0;">
           <div>
             <div class="lbl">Déchiffrer un fichier</div>
-            <div class="desc">Ouvrez un fichier .privalayer reçu</div>
+            <div class="desc">Ouvrez un fichier .txt chiffré reçu</div>
           </div>
           <button class="btn btn-sm" id="btn-decrypt-file">Choisir</button>
         </div>
-        <input type="file" id="input-decrypt-file" class="hidden" accept=".privalayer">
+        <input type="file" id="input-decrypt-file" class="hidden" accept=".txt">
       </div>
     </section>
 
@@ -880,13 +938,20 @@ async function encryptFile(contact, file) {
   ));
   messageKey.fill(0);
   await persistVault();
-  return new Blob([concatBytes(header, ciphertext)], { type: 'application/octet-stream' });
+  // Encodé en base64/texte (plutôt qu'en binaire brut) pour rester un fichier .txt
+  // ordinaire — plus fiable pour le partage/enregistrement sur iOS.
+  return new Blob([bufToB64(concatBytes(header, ciphertext))], { type: 'text/plain;charset=utf-8' });
 }
 
 async function decryptFile(file) {
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  let bytes;
+  try {
+    bytes = b64ToBuf((await file.text()).trim());
+  } catch {
+    throw new Error('Fichier chiffré invalide.');
+  }
   if (bytes.length < 30 || compareBytes(bytes.slice(0, 4), FILE_MAGIC) !== 0) {
-    throw new Error('Fichier .privalayer invalide.');
+    throw new Error('Fichier chiffré invalide.');
   }
   const senderHash = bytes.slice(4, 12);
   const counterBytes = bytes.slice(12, 16);
@@ -1031,36 +1096,142 @@ document.getElementById('btn-copy-encrypted').addEventListener('click', () => {
 document.getElementById('btn-share-encrypted').addEventListener('click', () => {
   shareText(document.getElementById('encrypt-output').textContent);
 });
-let pendingEncryptedFile = null; // { blob, filename } en attente d'action (envoyer/enregistrer)
-
-document.getElementById('btn-encrypt-file').addEventListener('click', () => {
-  document.getElementById('input-encrypt-file').click();
+/* ============================================================
+   UI — Chiffrer : sous-onglets Texte / Fichiers
+   ============================================================ */
+document.querySelectorAll('.segmented-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.segmented-btn').forEach(b => {
+      b.classList.toggle('active', b === btn);
+      b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+    });
+    const mode = btn.dataset.mode;
+    document.getElementById('encrypt-mode-text').classList.toggle('hidden', mode !== 'text');
+    document.getElementById('encrypt-mode-files').classList.toggle('hidden', mode !== 'files');
+  });
 });
-document.getElementById('input-encrypt-file').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
+
+/* ============================================================
+   UI — Chiffrer : fichiers (zone de dépôt, 1 à 3 fichiers)
+   ============================================================ */
+const MAX_ENCRYPT_FILES = 3;
+let selectedFiles = []; // [{ id, file, url? }]
+
+function renderFileTiles() {
+  const tiles = document.getElementById('file-tiles');
+  document.getElementById('file-dropzone-placeholder').classList.toggle('hidden', selectedFiles.length > 0);
+  tiles.innerHTML = selectedFiles.map(entry => {
+    const thumb = entry.url
+      ? `<img src="${entry.url}" alt="">`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"></path><path d="M14 3v5h5"></path></svg>`;
+    return `<div class="file-tile" data-id="${entry.id}">
+      <button type="button" class="file-tile-remove" data-remove-file="${entry.id}" aria-label="Retirer ce fichier">&times;</button>
+      <div class="file-tile-thumb">${thumb}</div>
+      <div class="file-tile-name">${escapeHtml(entry.file.name)}</div>
+    </div>`;
+  }).join('');
+  if (selectedFiles.length > 0 && selectedFiles.length < MAX_ENCRYPT_FILES) {
+    tiles.insertAdjacentHTML('beforeend', `<button type="button" class="file-tile file-tile-add" id="file-tile-add" aria-label="Ajouter un fichier">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+    </button>`);
+    document.getElementById('file-tile-add').addEventListener('click', (e) => { e.stopPropagation(); openEncryptFilePicker(); });
+  }
+  tiles.querySelectorAll('[data-remove-file]').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); removeSelectedFile(btn.dataset.removeFile); });
+  });
+}
+function addSelectedFiles(fileList) {
+  for (const file of Array.from(fileList)) {
+    if (selectedFiles.length >= MAX_ENCRYPT_FILES) { toast('Maximum ' + MAX_ENCRYPT_FILES + ' fichiers.'); break; }
+    const entry = { id: crypto.randomUUID(), file };
+    if (file.type.startsWith('image/')) entry.url = URL.createObjectURL(file);
+    selectedFiles.push(entry);
+  }
+  renderFileTiles();
+}
+function removeSelectedFile(id) {
+  const entry = selectedFiles.find(f => f.id === id);
+  if (entry && entry.url) URL.revokeObjectURL(entry.url);
+  selectedFiles = selectedFiles.filter(f => f.id !== id);
+  renderFileTiles();
+}
+function openEncryptFilePicker() {
+  if (selectedFiles.length >= MAX_ENCRYPT_FILES) return toast('Maximum ' + MAX_ENCRYPT_FILES + ' fichiers.');
+  document.getElementById('input-encrypt-files').click();
+}
+
+const fileDropzone = document.getElementById('file-dropzone');
+fileDropzone.addEventListener('click', (e) => {
+  if (e.target.closest('.file-tile-remove') || e.target.closest('.file-tile-add')) return;
+  openEncryptFilePicker();
+});
+fileDropzone.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEncryptFilePicker(); }
+});
+['dragover', 'dragenter'].forEach(evt => fileDropzone.addEventListener(evt, (e) => {
+  e.preventDefault();
+  fileDropzone.classList.add('dragover');
+}));
+['dragleave', 'drop'].forEach(evt => fileDropzone.addEventListener(evt, (e) => {
+  e.preventDefault();
+  fileDropzone.classList.remove('dragover');
+}));
+fileDropzone.addEventListener('drop', (e) => {
+  if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) addSelectedFiles(e.dataTransfer.files);
+});
+document.getElementById('input-encrypt-files').addEventListener('change', (e) => {
+  addSelectedFiles(e.target.files);
   e.target.value = '';
-  if (!file) return;
+});
+renderFileTiles();
+
+document.getElementById('btn-encrypt-files').addEventListener('click', async () => {
   const sel = document.getElementById('encrypt-contact');
   const contact = vault.contacts.find(c => c.id === sel.value);
   if (!contact) return toast('Choisissez un destinataire.');
-  document.getElementById('encrypted-file-wrap').classList.add('hidden');
+  if (selectedFiles.length === 0) return toast('Ajoutez au moins un fichier.');
+
+  const wrap = document.getElementById('encrypted-files-wrap');
+  wrap.classList.add('hidden');
+  wrap.innerHTML = '';
+
+  const results = [];
   try {
-    const blob = await encryptFile(contact, file);
-    const filename = file.name + '.privalayer';
-    pendingEncryptedFile = { blob, filename };
-    document.getElementById('encrypted-file-name').textContent = filename;
-    document.getElementById('encrypted-file-wrap').classList.remove('hidden');
+    // Séquentiel (pas Promise.all) : chaque appel avance le ratchet du contact,
+    // un traitement en parallèle ferait courir le compteur d'envoi.
+    for (const entry of selectedFiles) {
+      const blob = await encryptFile(contact, entry.file);
+      results.push({ blob, filename: entry.file.name + '.txt' });
+    }
   } catch (err) {
     toast('Erreur : ' + err.message);
+    return;
   }
-});
-document.getElementById('btn-send-file').addEventListener('click', () => {
-  if (pendingEncryptedFile) shareFile(pendingEncryptedFile.blob, pendingEncryptedFile.filename);
-});
-document.getElementById('btn-save-file').addEventListener('click', () => {
-  if (!pendingEncryptedFile) return;
-  downloadBlob(pendingEncryptedFile.blob, pendingEncryptedFile.filename);
-  toast('Fichier chiffré enregistré.');
+
+  for (const res of results) {
+    const card = document.createElement('div');
+    card.className = 'card encrypted-file-card';
+    card.innerHTML = `
+      <div class="encrypted-file-row">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+        <span class="hint encrypted-file-name">${escapeHtml(res.filename)}</span>
+      </div>
+      <div class="btn-row" style="margin-top:12px;">
+        <button type="button" class="btn btn-primary btn-block btn-send-encrypted-file">Envoyer</button>
+        <button type="button" class="btn btn-block btn-save-encrypted-file">Enregistrer</button>
+      </div>`;
+    card.querySelector('.btn-send-encrypted-file').addEventListener('click', () => shareFile(res.blob, res.filename));
+    card.querySelector('.btn-save-encrypted-file').addEventListener('click', () => {
+      downloadBlob(res.blob, res.filename);
+      toast('Fichier chiffré enregistré.');
+    });
+    wrap.appendChild(card);
+  }
+  wrap.classList.remove('hidden');
+
+  selectedFiles.forEach(f => { if (f.url) URL.revokeObjectURL(f.url); });
+  selectedFiles = [];
+  renderFileTiles();
 });
 
 /* ============================================================
