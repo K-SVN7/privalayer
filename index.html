@@ -15,6 +15,8 @@
     var saved = localStorage.getItem('privalayer_theme');
     var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'blue');
     document.documentElement.setAttribute('data-theme', theme);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#0A0A0F' : '#2B44FF');
   }catch(e){}
 })();
 </script>
@@ -63,7 +65,7 @@
     --text-secondary:rgba(232,232,240,0.65);
     --text-muted:rgba(232,232,240,0.35);
     --accent:#4A7AFF;
-    --btn-primary-bg:#4A7AFF;
+    --btn-primary-bg:#2B44FF;
     --btn-primary-text:#FFFFFF;
     --btn-secondary-bg:transparent;
     --btn-secondary-border:rgba(255,255,255,0.2);
@@ -188,16 +190,26 @@
   .reminder-banner span{color:var(--text-secondary);}
 
   /* --- app shell --- */
-  #app{flex:1; display:flex; flex-direction:column; min-height:100vh; min-height:100dvh;}
+  /* hauteur fixe (pas min-height) + overflow:hidden : #app ne dépasse jamais le
+     viewport, c'est main.content qui défile seul, pas toute la page. */
+  #app{
+    display:flex; flex-direction:column;
+    height:100vh; height:100dvh; overflow:hidden;
+  }
   header.topbar{
     padding:26px 20px 16px; display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center;
+    background:var(--bg-primary); flex-shrink:0;
+    transition:background-color .3s ease;
   }
   header.topbar .brand-name{font-size:1.9rem;}
   header.topbar #topbar-title{
     margin:6px 0 0; font-size:0.72rem; font-weight:600; color:var(--text-secondary);
     text-transform:uppercase; letter-spacing:0.12em;
   }
-  main.content{flex:1; overflow-y:auto; padding:4px 20px 100px; max-width:480px; width:100%; margin:0 auto;}
+  main.content{
+    flex:1; min-height:0; overflow-y:auto;
+    padding:4px 20px 100px; max-width:480px; width:100%; margin:0 auto;
+  }
 
   .tab-panel{display:none; flex-direction:column; gap:14px;}
   .tab-panel.active{display:flex;}
@@ -385,6 +397,16 @@
 
   @media (min-width:640px){
     main.content{max-width:480px;}
+  }
+
+  /* --- écrans courts (iPhone 12 et similaires) : réduit l'espace vertical --- */
+  @media (max-height:700px){
+    header.topbar{padding:15px 20px 10px;}
+    .brand-name{font-size:2rem;}
+    header.topbar .brand-name{font-size:1.5rem;}
+    .tab-panel{gap:10px;}
+    .card + .card{margin-top:0;}
+    textarea.input{min-height:80px;}
   }
 </style>
 </head>
@@ -1215,6 +1237,8 @@ function toggleTheme() {
   const next = current === 'dark' ? 'blue' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('privalayer_theme', next);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', next === 'dark' ? '#0A0A0F' : '#2B44FF');
 }
 document.querySelectorAll('.theme-toggle').forEach(btn => btn.addEventListener('click', toggleTheme));
 
