@@ -448,11 +448,11 @@
   <form id="form-setup" autocomplete="off">
     <div class="field">
       <label for="setup-pw1">Mot de passe</label>
-      <input class="input" type="password" id="setup-pw1" autocomplete="new-password" minlength="8" required>
+      <input class="input" type="password" id="setup-pw1" autocomplete="new-password" minlength="4" required>
     </div>
     <div class="field">
       <label for="setup-pw2">Confirmer le mot de passe</label>
-      <input class="input" type="password" id="setup-pw2" autocomplete="new-password" minlength="8" required>
+      <input class="input" type="password" id="setup-pw2" autocomplete="new-password" minlength="4" required>
     </div>
     <div class="error-msg" id="setup-error"></div>
     <button type="submit" class="btn btn-primary btn-block">Créer</button>
@@ -1538,9 +1538,9 @@ document.getElementById('btn-change-pw').addEventListener('click', async () => {
   } catch {
     return toast('Mot de passe actuel incorrect.');
   }
-  const next = prompt('Nouveau mot de passe (8 caractères min.) :');
+  const next = prompt('Nouveau mot de passe (4 caractères min.) :');
   if (!next) return;
-  if (next.length < 8) return toast('Trop court (8 caractères min.).');
+  if (next.length < 4) return toast('Trop court (4 caractères min.).');
   const newSalt = crypto.getRandomValues(new Uint8Array(16));
   const newKey = await deriveVaultKey(next, newSalt);
   const blob = await wrapVault(vault, newKey);
@@ -1678,7 +1678,7 @@ document.getElementById('form-setup').addEventListener('submit', async (e) => {
   const pw2 = document.getElementById('setup-pw2').value;
   const errEl = document.getElementById('setup-error');
   errEl.textContent = '';
-  if (pw1.length < 8) return errEl.textContent = 'Le mot de passe doit faire au moins 8 caractères.';
+  if (pw1.length < 4) return errEl.textContent = 'Le mot de passe doit faire au moins 4 caractères.';
   if (pw1 !== pw2) return errEl.textContent = 'Les mots de passe ne correspondent pas.';
   await createVault(pw1);
   enterApp();
