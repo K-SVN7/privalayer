@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#2B44FF">
 <meta name="description" content="Chiffrez du texte et des fichiers localement avant de les partager par n'importe quel canal.">
 <link rel="manifest" href="manifest.json">
@@ -75,8 +75,16 @@
     --warning:#FBBF24;
     --border:rgba(255,255,255,0.08);
   }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
+  *{
+    box-sizing:border-box;
+    -webkit-touch-callout:none; -webkit-user-select:none; user-select:none;
+  }
+  textarea, input{-webkit-touch-callout:default; -webkit-user-select:text; user-select:text;}
+  html,body{
+    margin:0; padding:0;
+    overflow:hidden; touch-action:manipulation; -webkit-overflow-scrolling:touch;
+    overscroll-behavior:none;
+  }
   body{
     background:var(--bg-primary); color:var(--text-primary);
     font-family:var(--font-body);
