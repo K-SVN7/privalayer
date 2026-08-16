@@ -158,6 +158,17 @@
   .input:focus{border-color:#fff; box-shadow:0 0 0 3px rgba(255,255,255,0.1);}
   textarea.input{resize:vertical; min-height:120px; line-height:1.5;}
   textarea.input.mono{font-family:var(--font-mono); font-size:0.8rem;}
+
+  .textarea-wrap{position:relative;}
+  .textarea-wrap textarea.input{padding-right:48px;}
+  .textarea-paste-btn{
+    position:absolute; top:10px; right:10px; width:30px; height:30px; border-radius:8px;
+    background:rgba(255,255,255,0.1); border:none; color:var(--text-primary);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;
+    transition:background-color .2s ease;
+  }
+  .textarea-paste-btn:hover{background:rgba(255,255,255,0.18);}
+  .textarea-paste-btn svg{width:16px; height:16px;}
   label{font-size:0.8rem; color:var(--text-secondary); text-align:left; display:block; margin-bottom:5px;}
   .field{text-align:left;}
 
@@ -621,7 +632,12 @@
       <div class="card">
         <div class="field">
           <label for="decrypt-text">Message chiffré reçu</label>
-          <textarea class="input mono" id="decrypt-text" placeholder="Collez le bloc chiffré ici…"></textarea>
+          <div class="textarea-wrap">
+            <textarea class="input mono" id="decrypt-text" placeholder="Collez le bloc chiffré ici…"></textarea>
+            <button type="button" class="textarea-paste-btn" id="btn-paste-decrypt-text" title="Coller depuis le presse-papier" aria-label="Coller depuis le presse-papier">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="17" rx="2"></rect><rect x="9" y="2" width="6" height="4" rx="1"></rect></svg>
+            </button>
+          </div>
         </div>
         <button class="btn btn-primary btn-block" id="btn-decrypt-text" style="margin-top:12px;">Déchiffrer</button>
         <div id="decrypt-output-wrap" class="hidden" style="margin-top:14px;">
@@ -1546,6 +1562,16 @@ document.getElementById('btn-decrypt-text').addEventListener('click', async () =
     wrap.classList.remove('hidden');
   } catch (e) {
     errEl.textContent = e.message;
+  }
+});
+document.getElementById('btn-paste-decrypt-text').addEventListener('click', async () => {
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+      throw new Error("Le presse-papier n'est pas accessible sur ce navigateur.");
+    }
+    document.getElementById('decrypt-text').value = await navigator.clipboard.readText();
+  } catch (err) {
+    toast('Erreur : ' + (err.message || 'Impossible de lire le presse-papier.'));
   }
 });
 document.getElementById('btn-decrypt-file').addEventListener('click', () => {
