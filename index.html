@@ -189,6 +189,18 @@
   .reminder-banner svg{width:20px; height:20px; flex-shrink:0;}
   .reminder-banner span{color:var(--text-secondary);}
 
+  .decrypt-file-result{margin-top:14px;}
+  .decrypt-file-preview-wrap{
+    width:100%; max-height:280px; overflow:hidden; border-radius:12px; margin-bottom:12px;
+    background:rgba(255,255,255,0.04); display:flex; align-items:center; justify-content:center;
+  }
+  .decrypt-file-preview-wrap img{width:100%; max-height:280px; object-fit:contain; display:block;}
+  .decrypt-file-info{display:flex; align-items:center; gap:10px;}
+  .decrypt-file-info svg{width:22px; height:22px; color:var(--text-primary); flex-shrink:0;}
+  .decrypt-file-info-text{min-width:0;}
+  .decrypt-file-name{font-size:0.85rem; color:var(--text-primary); word-break:break-all;}
+  .decrypt-file-from{font-size:0.78rem; color:var(--text-secondary); margin-top:2px;}
+
   /* --- app shell --- */
   /* hauteur fixe (pas min-height) + overflow:hidden : #app ne dépasse jamais le
      viewport, c'est main.content qui défile seul, pas toute la page. */
@@ -585,6 +597,24 @@
           <button class="btn btn-sm" id="btn-decrypt-file">Choisir</button>
         </div>
         <input type="file" id="input-decrypt-file" class="hidden" accept=".txt">
+
+        <div id="decrypt-file-result" class="decrypt-file-result hidden">
+          <div id="decrypt-file-preview-wrap" class="decrypt-file-preview-wrap hidden">
+            <img id="decrypt-file-preview" alt="Aperçu du fichier déchiffré">
+          </div>
+          <div class="decrypt-file-info">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"></path><path d="M14 3v5h5"></path></svg>
+            <div class="decrypt-file-info-text">
+              <div class="decrypt-file-name" id="decrypt-file-name"></div>
+              <div class="decrypt-file-from" id="decrypt-file-from"></div>
+            </div>
+          </div>
+          <div class="btn-row" style="margin-top:12px;">
+            <button class="btn btn-primary btn-block" id="btn-decrypt-file-save">Enregistrer</button>
+            <button class="btn btn-block" id="btn-decrypt-file-share">Partager</button>
+          </div>
+        </div>
+
         <div id="decrypt-file-reminder" class="reminder-banner hidden">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"></path><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"></path><path d="M10 11v6M14 11v6"></path></svg>
           <span>Pensez à supprimer le fichier chiffré de vos téléchargements.</span>
@@ -1444,18 +1474,59 @@ document.getElementById('btn-decrypt-text').addEventListener('click', async () =
 document.getElementById('btn-decrypt-file').addEventListener('click', () => {
   document.getElementById('input-decrypt-file').click();
 });
+
+const IMAGE_EXT_MIME = {
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
+  webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml', heic: 'image/heic', heif: 'image/heif',
+};
+function imageMimeForFilename(filename) {
+  const ext = (filename.split('.').pop() || '').toLowerCase();
+  return IMAGE_EXT_MIME[ext] || null;
+}
+
+let pendingDecryptedFile = null; // { blob, filename } en attente d'action (enregistrer/partager)
+let decryptPreviewUrl = null;
+
 document.getElementById('input-decrypt-file').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   e.target.value = '';
   if (!file) return;
+
+  const resultEl = document.getElementById('decrypt-file-result');
+  const previewWrap = document.getElementById('decrypt-file-preview-wrap');
+  const previewImg = document.getElementById('decrypt-file-preview');
+  resultEl.classList.add('hidden');
+  previewWrap.classList.add('hidden');
+  if (decryptPreviewUrl) { URL.revokeObjectURL(decryptPreviewUrl); decryptPreviewUrl = null; }
+
   try {
     const { blob, filename, contactName } = await decryptFile(file);
-    downloadBlob(blob, filename);
-    toast('Déchiffré (de ' + contactName + ') — téléchargé.');
+    pendingDecryptedFile = { blob, filename };
+
+    document.getElementById('decrypt-file-name').textContent = filename;
+    document.getElementById('decrypt-file-from').textContent = 'De : ' + contactName;
+
+    const mime = imageMimeForFilename(filename);
+    if (mime) {
+      decryptPreviewUrl = URL.createObjectURL(new Blob([blob], { type: mime }));
+      previewImg.onload = () => previewWrap.classList.remove('hidden');
+      previewImg.onerror = () => previewWrap.classList.add('hidden');
+      previewImg.src = decryptPreviewUrl;
+    }
+
+    resultEl.classList.remove('hidden');
     document.getElementById('decrypt-file-reminder').classList.remove('hidden');
   } catch (err) {
     toast('Erreur : ' + err.message);
   }
+});
+document.getElementById('btn-decrypt-file-save').addEventListener('click', () => {
+  if (!pendingDecryptedFile) return;
+  downloadBlob(pendingDecryptedFile.blob, pendingDecryptedFile.filename);
+  toast('Fichier enregistré.');
+});
+document.getElementById('btn-decrypt-file-share').addEventListener('click', () => {
+  if (pendingDecryptedFile) shareFile(pendingDecryptedFile.blob, pendingDecryptedFile.filename);
 });
 
 /* ============================================================
