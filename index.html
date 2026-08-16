@@ -339,6 +339,36 @@
   .qr-reader video{width:100%; height:100%; object-fit:cover;}
   .qr-scanner-hint{text-align:center; max-width:280px;}
 
+  /* --- code PIN (cases individuelles) --- */
+  .pin-field{display:flex; gap:8px; justify-content:center;}
+  .pin-box{
+    width:42px; height:52px; padding:0; text-align:center; font-size:1.4rem; font-weight:600;
+    background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:12px;
+    color:var(--text-primary); font-family:var(--font-mono);
+    transition:border-color .15s ease, box-shadow .15s ease, background-color .3s ease, color .3s ease;
+  }
+  .pin-box:focus{outline:none; border-color:#fff; box-shadow:0 0 0 3px rgba(255,255,255,0.1);}
+
+  /* --- modale : changer le code PIN --- */
+  .pin-modal{
+    position:fixed; inset:0; z-index:110; background:var(--bg-primary); color:var(--text-primary);
+    display:flex; flex-direction:column; transition:background-color .3s ease, color .3s ease;
+  }
+  .pin-modal-header{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-shrink:0;
+    padding:20px 20px 12px;
+  }
+  .pin-modal-title{font-family:var(--font-body); font-weight:600; font-size:1rem;}
+  .pin-modal-close{
+    background:rgba(255,255,255,0.08); border:none; color:var(--text-primary);
+    width:32px; height:32px; border-radius:50%; font-size:20px; line-height:1; padding:0;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .pin-modal-body{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:0 24px 24px; gap:16px; overflow-y:auto; min-height:0;
+  }
+
   .toast{
     position:fixed; left:50%; bottom:96px; transform:translateX(-50%);
     background:var(--bg-secondary); border:1px solid rgba(255,255,255,0.15); color:var(--text-primary);
@@ -509,15 +539,15 @@
     </div>
     <span class="tagline">Your privacy layer</span>
   </div>
-  <p class="sub">Créez un mot de passe pour protéger vos clés localement. Il ne quitte jamais cet appareil — s'il est perdu, vos données chiffrées sont irrécupérables.</p>
+  <p class="sub">Créez un code PIN pour protéger vos clés localement. Il ne quitte jamais cet appareil — s'il est perdu, vos données chiffrées sont irrécupérables.</p>
   <form id="form-setup" autocomplete="off">
     <div class="field">
-      <label for="setup-pw1">Mot de passe</label>
-      <input class="input" type="password" id="setup-pw1" autocomplete="new-password" minlength="4" required>
+      <label>Code PIN (4 chiffres min.)</label>
+      <div class="pin-field" id="pin-setup-pw1"></div>
     </div>
     <div class="field">
-      <label for="setup-pw2">Confirmer le mot de passe</label>
-      <input class="input" type="password" id="setup-pw2" autocomplete="new-password" minlength="4" required>
+      <label>Confirmer le code PIN</label>
+      <div class="pin-field" id="pin-setup-pw2"></div>
     </div>
     <div class="error-msg" id="setup-error"></div>
     <button type="submit" class="btn btn-primary btn-block">Créer</button>
@@ -539,11 +569,11 @@
     </div>
     <span class="tagline">Your privacy layer</span>
   </div>
-  <p class="sub">Entrez votre mot de passe pour déverrouiller votre trousseau.</p>
+  <p class="sub">Entrez votre code PIN pour déverrouiller votre trousseau.</p>
   <form id="form-unlock" autocomplete="off">
     <div class="field">
-      <label for="unlock-pw">Mot de passe</label>
-      <input class="input" type="password" id="unlock-pw" autocomplete="current-password" required autofocus>
+      <label>Code PIN</label>
+      <div class="pin-field" id="pin-unlock-pw"></div>
     </div>
     <div class="error-msg" id="unlock-error"></div>
     <button type="submit" class="btn btn-primary btn-block">Déverrouiller</button>
@@ -733,7 +763,7 @@
         </div>
         <div class="settings-row">
           <div>
-            <div class="lbl">Changer le mot de passe</div>
+            <div class="lbl">Changer le code PIN</div>
           </div>
           <button class="btn btn-sm" id="btn-change-pw">Modifier</button>
         </div>
@@ -909,6 +939,26 @@
     <div id="qr-reader" class="qr-reader"></div>
     <p class="hint qr-scanner-hint">Visez le QR code de votre contact avec la caméra.</p>
     <div class="error-msg" id="qr-scanner-error"></div>
+  </div>
+</div>
+
+<!-- ===== Changer le code PIN ===== -->
+<div id="change-pin-modal" class="pin-modal hidden">
+  <div class="pin-modal-header">
+    <span class="pin-modal-title">Changer le code PIN</span>
+    <button type="button" class="pin-modal-close" id="btn-close-change-pin" aria-label="Fermer">&times;</button>
+  </div>
+  <div class="pin-modal-body">
+    <div class="field" style="width:100%; max-width:320px;">
+      <label>Code PIN actuel</label>
+      <div class="pin-field" id="pin-change-current"></div>
+    </div>
+    <div class="field" style="width:100%; max-width:320px;">
+      <label>Nouveau code PIN (4 chiffres min.)</label>
+      <div class="pin-field" id="pin-change-new"></div>
+    </div>
+    <div class="error-msg" id="change-pin-error"></div>
+    <button type="button" class="btn btn-primary btn-block" id="btn-confirm-change-pin" style="max-width:320px;">Valider</button>
   </div>
 </div>
 
@@ -1301,7 +1351,7 @@ async function createVault(password) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   sessionKey = await deriveVaultKey(password, salt);
   const kp = await generateKeyPair();
-  vault = { privateKey: kp.privateKeyJwk, publicKey: kp.publicKeyB64, contacts: [], onboardingSeen: false };
+  vault = { privateKey: kp.privateKeyJwk, publicKey: kp.publicKeyB64, contacts: [] };
   myPublicKeyBytes = b64ToBuf(kp.publicKeyB64);
   localStorage.setItem(STORAGE_SALT, bufToB64(salt));
   await persistVault();
@@ -1334,7 +1384,13 @@ function showScreen(id) {
   }
 }
 function showGate() {
-  showScreen(hasVault() ? 'screen-unlock' : 'screen-setup');
+  if (hasVault()) {
+    showScreen('screen-unlock');
+    focusPinField('pin-unlock-pw');
+  } else {
+    // Premier lancement : l'onboarding passe avant la création du code PIN.
+    showOnboarding();
+  }
 }
 function switchTab(tab) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tab));
@@ -1368,7 +1424,6 @@ document.querySelectorAll('.theme-toggle').forEach(btn => btn.addEventListener('
 function enterApp() {
   showScreen('app');
   switchTab('encrypt');
-  if (!vault.onboardingSeen) showOnboarding();
 }
 
 /* ============================================================
@@ -1779,27 +1834,40 @@ document.getElementById('btn-share-mykey').addEventListener('click', () => {
    ============================================================ */
 document.getElementById('btn-lock').addEventListener('click', lockSession);
 
-document.getElementById('btn-change-pw').addEventListener('click', async () => {
-  const current = prompt('Mot de passe actuel :');
-  if (current === null) return;
+document.getElementById('btn-change-pw').addEventListener('click', () => {
+  document.getElementById('change-pin-error').textContent = '';
+  clearPinField('pin-change-current');
+  clearPinField('pin-change-new');
+  document.getElementById('change-pin-modal').classList.remove('hidden');
+  focusPinField('pin-change-current');
+});
+document.getElementById('btn-close-change-pin').addEventListener('click', () => {
+  document.getElementById('change-pin-modal').classList.add('hidden');
+});
+document.getElementById('btn-confirm-change-pin').addEventListener('click', async () => {
+  const errEl = document.getElementById('change-pin-error');
+  errEl.textContent = '';
+  const current = getPinValue('pin-change-current');
+  const next = getPinValue('pin-change-new');
+  if (next.length < PIN_MIN_LENGTH) return errEl.textContent = 'Le nouveau code doit faire au moins ' + PIN_MIN_LENGTH + ' chiffres.';
   const salt = b64ToBuf(localStorage.getItem(STORAGE_SALT));
   let checkKey;
   try {
     checkKey = await deriveVaultKey(current, salt);
     await unwrapVault(localStorage.getItem(STORAGE_VAULT), checkKey);
   } catch {
-    return toast('Mot de passe actuel incorrect.');
+    clearPinField('pin-change-current');
+    focusPinField('pin-change-current');
+    return errEl.textContent = 'Code PIN actuel incorrect.';
   }
-  const next = prompt('Nouveau mot de passe (4 caractères min.) :');
-  if (!next) return;
-  if (next.length < 4) return toast('Trop court (4 caractères min.).');
   const newSalt = crypto.getRandomValues(new Uint8Array(16));
   const newKey = await deriveVaultKey(next, newSalt);
   const blob = await wrapVault(vault, newKey);
   localStorage.setItem(STORAGE_SALT, bufToB64(newSalt));
   localStorage.setItem(STORAGE_VAULT, blob);
   sessionKey = newKey;
-  toast('Mot de passe modifié.');
+  document.getElementById('change-pin-modal').classList.add('hidden');
+  toast('Code PIN modifié.');
 });
 
 document.getElementById('btn-export-keys').addEventListener('click', async () => {
@@ -1888,6 +1956,66 @@ function downloadBlob(blob, filename) {
 }
 
 /* ============================================================
+   UI — code PIN (cases individuelles)
+   ============================================================ */
+const PIN_MIN_LENGTH = 4;
+const PIN_MAX_LENGTH = 6;
+
+function buildPinField(containerId) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  for (let i = 0; i < PIN_MAX_LENGTH; i++) {
+    const box = document.createElement('input');
+    box.type = 'text';
+    box.inputMode = 'numeric';
+    box.pattern = '[0-9]*';
+    box.autocomplete = 'off';
+    box.maxLength = 1;
+    box.className = 'pin-box';
+    box.setAttribute('aria-label', 'Chiffre ' + (i + 1) + ' du code PIN');
+    container.appendChild(box);
+  }
+  container.addEventListener('input', (e) => {
+    const target = e.target;
+    if (!target.classList.contains('pin-box')) return;
+    target.value = target.value.replace(/[^0-9]/g, '').slice(-1);
+    if (target.value && target.nextElementSibling) target.nextElementSibling.focus();
+  });
+  container.addEventListener('keydown', (e) => {
+    const target = e.target;
+    if (!target.classList.contains('pin-box')) return;
+    if (e.key === 'Backspace' && !target.value && target.previousElementSibling) {
+      target.previousElementSibling.focus();
+    }
+  });
+  container.addEventListener('paste', (e) => {
+    const text = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+    if (!text) return;
+    e.preventDefault();
+    const boxes = container.querySelectorAll('.pin-box');
+    boxes.forEach((box, i) => { box.value = text[i] || ''; });
+    const nextEmpty = Array.from(boxes).find(b => !b.value);
+    (nextEmpty || boxes[boxes.length - 1]).focus();
+  });
+}
+function getPinValue(containerId) {
+  let value = '';
+  for (const box of document.querySelectorAll('#' + containerId + ' .pin-box')) {
+    if (!box.value) break; // s'arrête au premier trou (saisie non contiguë)
+    value += box.value;
+  }
+  return value;
+}
+function clearPinField(containerId) {
+  document.querySelectorAll('#' + containerId + ' .pin-box').forEach(b => b.value = '');
+}
+function focusPinField(containerId) {
+  const first = document.querySelector('#' + containerId + ' .pin-box');
+  if (first) first.focus();
+}
+['pin-setup-pw1', 'pin-setup-pw2', 'pin-unlock-pw', 'pin-change-current', 'pin-change-new'].forEach(buildPinField);
+
+/* ============================================================
    UI — onboarding
    ============================================================ */
 function showOnboarding() {
@@ -1897,10 +2025,12 @@ function showOnboarding() {
   updateOnboardingDots();
   el.classList.remove('hidden');
 }
-async function closeOnboarding() {
+function closeOnboarding() {
   document.getElementById('onboarding').classList.add('hidden');
-  vault.onboardingSeen = true;
-  await persistVault();
+  // L'onboarding ne se montre qu'au tout premier lancement, avant la création
+  // du code PIN — une fois fermé, on passe à l'écran de création.
+  showScreen('screen-setup');
+  focusPinField('pin-setup-pw1');
 }
 function updateOnboardingDots() {
   const track = document.getElementById('onboarding-track');
@@ -1926,27 +2056,39 @@ document.getElementById('btn-onboarding-done').addEventListener('click', closeOn
    ============================================================ */
 document.getElementById('form-setup').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const pw1 = document.getElementById('setup-pw1').value;
-  const pw2 = document.getElementById('setup-pw2').value;
+  const pin1 = getPinValue('pin-setup-pw1');
+  const pin2 = getPinValue('pin-setup-pw2');
   const errEl = document.getElementById('setup-error');
   errEl.textContent = '';
-  if (pw1.length < 4) return errEl.textContent = 'Le mot de passe doit faire au moins 4 caractères.';
-  if (pw1 !== pw2) return errEl.textContent = 'Les mots de passe ne correspondent pas.';
-  await createVault(pw1);
+  if (pin1.length < PIN_MIN_LENGTH) {
+    errEl.textContent = 'Le code PIN doit faire au moins ' + PIN_MIN_LENGTH + ' chiffres.';
+    clearPinField('pin-setup-pw1');
+    clearPinField('pin-setup-pw2');
+    return focusPinField('pin-setup-pw1');
+  }
+  if (pin1 !== pin2) {
+    errEl.textContent = 'Les codes PIN ne correspondent pas.';
+    clearPinField('pin-setup-pw1');
+    clearPinField('pin-setup-pw2');
+    return focusPinField('pin-setup-pw1');
+  }
+  await createVault(pin1);
   enterApp();
 });
 
 document.getElementById('form-unlock').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const pw = document.getElementById('unlock-pw').value;
+  const pin = getPinValue('pin-unlock-pw');
   const errEl = document.getElementById('unlock-error');
   errEl.textContent = '';
   try {
-    await unlockVault(pw);
-    document.getElementById('unlock-pw').value = '';
+    await unlockVault(pin);
+    clearPinField('pin-unlock-pw');
     enterApp();
   } catch {
-    errEl.textContent = 'Mot de passe incorrect.';
+    errEl.textContent = 'Code PIN incorrect.';
+    clearPinField('pin-unlock-pw');
+    focusPinField('pin-unlock-pw');
   }
 });
 
