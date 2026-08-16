@@ -634,9 +634,12 @@
         <div class="settings-row" style="border-bottom:none; padding-bottom:0;">
           <div>
             <div class="lbl">Déchiffrer un fichier</div>
-            <div class="desc">Ouvrez un fichier .txt chiffré reçu</div>
+            <div class="desc">Choisissez un fichier .txt chiffré, ou collez-le depuis le presse-papier</div>
           </div>
-          <button class="btn btn-sm" id="btn-decrypt-file">Choisir</button>
+          <div style="display:flex; gap:8px; flex-shrink:0;">
+            <button class="btn btn-sm" id="btn-paste-decrypt-file" title="Coller depuis le presse-papier">Coller</button>
+            <button class="btn btn-sm" id="btn-decrypt-file">Choisir</button>
+          </div>
         </div>
         <input type="file" id="input-decrypt-file" class="hidden" accept=".txt">
 
@@ -1561,11 +1564,7 @@ function imageMimeForFilename(filename) {
 let pendingDecryptedFile = null; // { blob, filename } en attente d'action (enregistrer/partager)
 let decryptPreviewUrl = null;
 
-document.getElementById('input-decrypt-file').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  e.target.value = '';
-  if (!file) return;
-
+async function processDecryptFileBlob(fileOrBlob) {
   const resultEl = document.getElementById('decrypt-file-result');
   const previewWrap = document.getElementById('decrypt-file-preview-wrap');
   const previewImg = document.getElementById('decrypt-file-preview');
@@ -1573,25 +1572,53 @@ document.getElementById('input-decrypt-file').addEventListener('change', async (
   previewWrap.classList.add('hidden');
   if (decryptPreviewUrl) { URL.revokeObjectURL(decryptPreviewUrl); decryptPreviewUrl = null; }
 
+  const { blob, filename, contactName } = await decryptFile(fileOrBlob);
+  pendingDecryptedFile = { blob, filename };
+
+  document.getElementById('decrypt-file-name').textContent = filename;
+  document.getElementById('decrypt-file-from').textContent = 'De : ' + contactName;
+
+  const mime = imageMimeForFilename(filename);
+  if (mime) {
+    decryptPreviewUrl = URL.createObjectURL(new Blob([blob], { type: mime }));
+    previewImg.onload = () => previewWrap.classList.remove('hidden');
+    previewImg.onerror = () => previewWrap.classList.add('hidden');
+    previewImg.src = decryptPreviewUrl;
+  }
+
+  resultEl.classList.remove('hidden');
+  document.getElementById('decrypt-file-reminder').classList.remove('hidden');
+}
+
+document.getElementById('input-decrypt-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
   try {
-    const { blob, filename, contactName } = await decryptFile(file);
-    pendingDecryptedFile = { blob, filename };
-
-    document.getElementById('decrypt-file-name').textContent = filename;
-    document.getElementById('decrypt-file-from').textContent = 'De : ' + contactName;
-
-    const mime = imageMimeForFilename(filename);
-    if (mime) {
-      decryptPreviewUrl = URL.createObjectURL(new Blob([blob], { type: mime }));
-      previewImg.onload = () => previewWrap.classList.remove('hidden');
-      previewImg.onerror = () => previewWrap.classList.add('hidden');
-      previewImg.src = decryptPreviewUrl;
-    }
-
-    resultEl.classList.remove('hidden');
-    document.getElementById('decrypt-file-reminder').classList.remove('hidden');
+    await processDecryptFileBlob(file);
   } catch (err) {
     toast('Erreur : ' + err.message);
+  }
+});
+
+document.getElementById('btn-paste-decrypt-file').addEventListener('click', async () => {
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.read) {
+      throw new Error("Le presse-papier n'est pas accessible sur ce navigateur.");
+    }
+    const items = await navigator.clipboard.read();
+    let text = null;
+    for (const item of items) {
+      const type = item.types.includes('text/plain') ? 'text/plain' : item.types[0];
+      if (!type) continue;
+      const blob = await item.getType(type);
+      const candidate = (await blob.text()).trim();
+      if (candidate) { text = candidate; break; }
+    }
+    if (!text) throw new Error('Presse-papier vide ou illisible.');
+    await processDecryptFileBlob(new Blob([text]));
+  } catch (err) {
+    toast('Erreur : ' + (err.message || 'Impossible de lire le presse-papier.'));
   }
 });
 document.getElementById('btn-decrypt-file-save').addEventListener('click', () => {
