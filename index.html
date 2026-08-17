@@ -1018,6 +1018,18 @@ function compareBytes(a, b) {
   }
   return a.length - b.length;
 }
+// Certaines plateformes (mail, messageries) modifient la casse du texte —
+// compare deux suites d'octets ASCII en ignorant la casse des lettres.
+function bytesEqualCaseInsensitiveAscii(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    let x = a[i], y = b[i];
+    if (x >= 65 && x <= 90) x += 32;
+    if (y >= 65 && y <= 90) y += 32;
+    if (x !== y) return false;
+  }
+  return true;
+}
 function u32ToBytes(n) {
   const b = new Uint8Array(4);
   new DataView(b.buffer).setUint32(0, n, false);
@@ -1250,7 +1262,10 @@ async function encryptText(contact, plaintext) {
 }
 
 async function decryptText(packetStr) {
-  const raw = packetStr.trim().startsWith(TEXT_PREFIX) ? packetStr.trim().slice(TEXT_PREFIX.length) : packetStr.trim();
+  const trimmed = packetStr.trim();
+  const raw = trimmed.slice(0, TEXT_PREFIX.length).toLowerCase() === TEXT_PREFIX.toLowerCase()
+    ? trimmed.slice(TEXT_PREFIX.length)
+    : trimmed;
   const bytes = b64ToBuf(raw);
   if (bytes.length < 24) throw new Error('Format invalide.');
   const senderHash = bytes.slice(0, 8);
@@ -1308,7 +1323,7 @@ async function decryptFile(file) {
   } catch {
     throw new Error('Fichier chiffré invalide.');
   }
-  if (bytes.length < 30 || compareBytes(bytes.slice(0, 4), FILE_MAGIC) !== 0) {
+  if (bytes.length < 30 || !bytesEqualCaseInsensitiveAscii(bytes.slice(0, 4), FILE_MAGIC)) {
     throw new Error('Fichier chiffré invalide.');
   }
   const senderHash = bytes.slice(4, 12);
